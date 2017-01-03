@@ -22,6 +22,8 @@ import android.animation.Animator;
 import android.app.ActionBar;
 import android.app.Activity;
 import android.app.Dialog;
+import android.app.AlertDialog;
+
 import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
@@ -66,6 +68,7 @@ import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.ShareActionProvider;
+import android.content.DialogInterface;
 
 import com.android.camera.app.AppController;
 import com.android.camera.app.CameraAppUI;
@@ -211,6 +214,8 @@ public class CameraActivity extends QuickActivity
      */
     private boolean mResetToPreviewOnResume = true;
 
+    private boolean mDidRegister = false;
+
     /**
      * This data adapter is used by FilmStripView.
      */
@@ -271,6 +276,90 @@ public class CameraActivity extends QuickActivity
 
     /** Can be used to play custom sounds. */
     private SoundPlayer mSoundPlayer;
+
+    private AlertDialog mLocationDialog;
+    private BroadcastReceiver mBatteryInfoReceiver = new BroadcastReceiver() {
+    	@Override
+    	public void onReceive(Context context, Intent intent) {
+    		String action = intent.getAction();
+    		if (Intent.ACTION_BATTERY_CHANGED.equals(action)) {
+    			int Level = intent.getIntExtra("level", 0);
+    			int Scale = intent.getIntExtra("scale", 100);
+    			/*
+    			*Logic:
+    			*1.the battery level is lower then 5%.
+    			*2.if in camera, make sure that not in the snapshot progress.
+    			*3.if in videocamera, make sure that not in the videorecording progress.
+    			*4.everytime starting the camera activity, the battery level is broadcasted,
+    			*  if meeting the conditions above, give a dialog, press it and finish the activity.
+    			*5.if the conditions are not satisfied when started, play for a moment, in the camera acitvity
+    			*  or video camera activity, the conditiosn are satisfied, also give a dialog for finishing the activity.
+    			*
+    			*by fuqiang.
+    			*/
+    			if(Level < 5)
+    			{
+				Runnable runnable_close_camera = new Runnable() {
+				@Override
+				public void run() {
+					//close the camera.
+						CameraActivity.this.finish();
+					}
+				};
+				showLocationDialog();    
+    			}
+    			/*
+    			*Logic:
+    			*1.the battery level is lhigher then 5% and lower than 15%.
+    			*2.if in camera, make sure that not in the snapshot progress.
+    			*3.if in videocamera, make sure that not in the videorecording progress.
+    			*4.whether in camera or in videocamera, make sure that the flash mode is supported.
+    			*5.everytime starting the camera activity, the battery level is broadcasted,
+    			*  if meeting the conditions above, forbidden the flash(gray icon), give a dialog to notise user.
+    			*6.if the conditions are not satisfied when started, play for a moment, in the camera acitvity
+    			*  or video camera activity, the conditiosn are satisfied, forbidden the flash and give a notice dialog.
+    			*7.the dialog is only given once for each camera activity starting.
+    			*
+    			*by fuqiang.
+    			*/
+    			else if(Level < 16)
+    			{
+    				//close the flash mode.
+    				/*
+    				if (mIsLowBatteryDialogShown == false)
+    				{
+    					mRotateDialog.showAlertDialog(
+    		                getString(R.string.warning),
+    		                getString(R.string.low_battery_15),
+    		                null, null,
+    		                getString(R.string.close), null);
+    					mIsLowBatteryDialogShown = true;
+    				}
+    				*/
+    			}
+    		}
+    	}
+    };
+	
+	private void finishActivity()
+    {
+		CameraActivity.this.finish();
+    }
+    
+	public void showLocationDialog() {
+        mLocationDialog = new AlertDialog.Builder(CameraActivity.this)
+                .setTitle(R.string.warning).setCancelable(false)
+                .setMessage(R.string.low_battery_5)
+                .setPositiveButton(R.string.low_battery_close,
+                        new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int arg1) {
+								finishActivity();
+                            }
+                        })
+                .show();
+    }
+
 
     /** Holds configuration for various OneCamera features. */
     private OneCameraFeatureConfig mFeatureConfig;
@@ -1588,6 +1677,10 @@ public class CameraActivity extends QuickActivity
             IntentFilter filter_user_unlock = new IntentFilter(Intent.ACTION_USER_PRESENT);
             registerReceiver(mShutdownReceiver, filter_user_unlock);
         }
+
+	registerReceiver(mBatteryInfoReceiver, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+	mDidRegister = true;
+
         mCameraAppUI = new CameraAppUI(this,
                 (MainActivityLayout) findViewById(R.id.activity_root_view), isCaptureIntent());
 
@@ -2160,6 +2253,11 @@ public class CameraActivity extends QuickActivity
         if (mSecureCamera) {
             unregisterReceiver(mShutdownReceiver);
         }
+
+	if (mDidRegister) {
+		unregisterReceiver(mBatteryInfoReceiver);
+		mDidRegister = false;
+	}
 
         // Ensure anything that checks for "isPaused" returns true.
         mPaused = true;

@@ -960,4 +960,9 @@
 
     <!-- Shown to the user while an image/video is being saved to disk. -->
     <string name="session_saving_image">Saving\u2026</string>
+
+    <string name="warning">Warning</string>
+    <string name="low_battery_5">Low battery, need to close camera!</string>
+    <string name="low_battery_15">Low battery, need to close flash!</string>
+    <string name="low_battery_close">yes</string>
  </resources>

@@ -379,4 +379,8 @@
     <string name="pref_boolean_false" msgid="461317129020087333">"0"</string>
     <string name="pref_boolean_true" msgid="4131945223998878009">"1"</string>
     <string name="session_saving_image" msgid="8932315404486416826">"正在保存…"</string>
+    <string name="warning">警告</string>
+    <string name="low_battery_5">电量低，需要关闭相机！</string>
+    <string name="low_battery_15">电量低，需要关闭闪光灯！</string>
+    <string name="low_battery_close">确定</string>
 </resources>
